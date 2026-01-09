@@ -2,63 +2,72 @@
 session_start();
 require '../config/db.php';
 
-$msg="";
+$msg = "";
 
-if($_SERVER['REQUEST_METHOD']=="POST"){
-    $email=$_POST['email'];
-    $pass=$_POST['password'];
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $q=$pdo->prepare("SELECT * FROM voters WHERE voter_email=?");
-    $q->execute([$email]);
-    $u=$q->fetch();
+    $email = trim($_POST['email']);
+    $pass  = $_POST['password'];
 
-    if($u && password_verify($pass,$u['passwordhash'])){
-        $_SESSION['voter']=$email;
-        header("Location: ../voter/dashboard.php");
-        exit;
-    } else $msg="Invalid login credentials.";
+    $stmt = $conn->prepare("SELECT passwordhash FROM voters WHERE voter_email=?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    if ($res->num_rows === 1) {
+        $row = $res->fetch_assoc();
+
+        if (password_verify($pass, $row['passwordhash'])) {
+
+            session_regenerate_id(true);   // 🔥 THIS FIXES THE BUG
+            $_SESSION['user'] = $email;
+
+            header("Location: ../voter/dashboard.php");
+            exit;
+        } else {
+            $msg = "Invalid password.";
+        }
+    } else {
+        $msg = "Email not registered.";
+    }
 }
 ?>
+
+
 <!DOCTYPE html>
 <html>
 <head>
 <title>Voter Login</title>
 <style>
 body{
-    margin:0;
-    height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-    font-family:Segoe UI,sans-serif;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    height:100vh; display:flex; justify-content:center; align-items:center;
+    font-family:Segoe UI;
 }
-.card{
-    background:rgba(255,255,255,0.15);
-    padding:40px;
-    border-radius:16px;
-    width:360px;
-    box-shadow:0 25px 45px rgba(0,0,0,.35);
-    color:#fff;
+.box{
+    width:360px; padding:30px;
+    background:rgba(255,255,255,0.1);
+    border-radius:16px; color:white;
 }
-input{width:100%;padding:10px;margin:8px 0;border-radius:6px;border:none;}
-button{
-    width:100%;padding:12px;background:#00c6ff;border:none;
-    border-radius:8px;color:#fff;font-weight:600;
-}
-.error{text-align:center;color:#ff6b6b;margin-top:10px;}
+input{width:100%; padding:12px; margin:8px 0;border:none;border-radius:10px;}
+button{width:100%;padding:12px;border:none;border-radius:12px;background:#38bdf8;color:black;font-weight:bold;}
+a{color:#7dd3fc;text-decoration:none;}
 </style>
 </head>
 <body>
 
-<div class="card">
-<h2 style="text-align:center;">Voter Login</h2>
-<form method="post">
-<input name="email" placeholder="Email" required>
+<div class="box">
+<h2>📦 Voter Login</h2>
+
+<?php if($msg!="") echo "<p style='color:orange'>$msg</p>"; ?>
+
+<form method="POST">
+<input type="email" name="email" placeholder="Email" required>
 <input type="password" name="password" placeholder="Password" required>
-<button>Login</button>
+<button name="login">Login</button>
 </form>
-<?php if($msg): ?><p class="error"><?= $msg ?></p><?php endif; ?>
+
+<p style="margin-top:10px;">New voter? <a href="../auth/register.php">Register here</a></p>
 </div>
 
 </body>

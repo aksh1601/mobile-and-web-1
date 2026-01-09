@@ -1,8 +1,14 @@
+<?php phpinfo(); ?>
+
 <?php
+ini_set('display_errors',1);
+error_reporting(E_ALL);
 require 'config/db.php';
 
-$stmt = $pdo->query("SELECT * FROM referendum");
-foreach ($stmt as $row) {
-    echo $row['referendum_id'] . " - " . $row['text'] . "<br>";
+$res = $conn->query("SHOW TABLES");
+
+if($res){
+    echo "Database connected successfully!";
+}else{
+    echo "DB query failed.";
 }
-?>

@@ -1,19 +1,12 @@
-
 <?php
 $host = "localhost";
-$db   = "mslr_db";
+$dbname = "mslr";   // your database name
 $user = "root";
 $pass = "";
-$port = 3307;
 
 try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$db;port=$port;charset=utf8mb4",
-        $user,
-        $pass,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    die("DB Connection failed: " . $e->getMessage());
+    die("Database Connection Failed: " . $e->getMessage());
 }
-?>

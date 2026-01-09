@@ -1,50 +1,55 @@
 <?php
 session_start();
-require '../config/db.php';
+ini_set('display_errors',1);
+error_reporting(E_ALL);
+require_once __DIR__ . '/config/db.php';
 
-if (!isset($_SESSION['voter'])) {
-    header("Location: ../auth/login.php");
-    exit;
+$msg = "";
+
+$refs = $pdo->query("SELECT * FROM referendums WHERE status='active'")->fetchAll(PDO::FETCH_ASSOC);
+
+if (isset($_POST['vote'])) {
+    $uid = $_SESSION['user_id'];
+    $rid = $_POST['rid'];
+    $oid = $_POST['option'];
+
+    try {
+        $stmt = $pdo->prepare("INSERT INTO votes (user_id, referendum_id, option_id) VALUES (?,?,?)");
+        $stmt->execute([$uid,$rid,$oid]);
+        $msg = "Vote submitted successfully!";
+    } catch (PDOException $e) {
+        $msg = "You already voted on this referendum.";
+    }
 }
-
-if (!isset($_GET['id'])) {
-    die("Invalid referendum.");
-}
-
-$rid = (int)$_GET['id'];
-$email = $_SESSION['voter'];
-
-# Check referendum
-$r = $pdo->prepare("SELECT * FROM referendum WHERE referendum_id=? AND status='open'");
-$r->execute([$rid]);
-$ref = $r->fetch(PDO::FETCH_ASSOC);
-if(!$ref) die("Referendum closed or not found.");
-
-# Check if already voted
-$chk = $pdo->prepare("SELECT 1 FROM voter_history WHERE voter_email=? AND referendum_id=?");
-$chk->execute([$email,$rid]);
-if($chk->rowCount()>0){
-    die("You already voted.");
-}
-
-# Load options
-$opt = $pdo->prepare("SELECT * FROM referendum_options WHERE referendum_id=?");
-$opt->execute([$rid]);
-$options = $opt->fetchAll(PDO::FETCH_ASSOC);
 ?>
+<!DOCTYPE html>
+<html>
+<head><title>Vote</title></head>
+<body>
 
-<h2><?= htmlspecialchars($ref['text']) ?></h2>
+<h2>Active Referendums</h2>
+<p style="color:green"><?= $msg ?></p>
 
-<form method="post" action="submit_vote.php">
-<input type="hidden" name="rid" value="<?= $rid ?>">
+<?php foreach ($refs as $r): ?>
+<form method="POST">
+    <h3><?= htmlspecialchars($r['title']) ?></h3>
+    <input type="hidden" name="rid" value="<?= $r['id'] ?>">
 
-<?php foreach($options as $o): ?>
-    <label>
-        <input type="radio" name="option_id" value="<?= $o['option_id'] ?>" required>
-        <?= htmlspecialchars($o['option_text']) ?>
-    </label><br>
+    <?php
+    $ops = $pdo->prepare("SELECT * FROM referendum_options WHERE referendum_id=?");
+    $ops->execute([$r['id']]);
+    foreach ($ops as $o):
+    ?>
+        <label>
+            <input type="radio" name="option" value="<?= $o['id'] ?>" required>
+            <?= htmlspecialchars($o['option_text']) ?>
+        </label><br>
+    <?php endforeach; ?>
+
+    <button name="vote">Submit Vote</button>
+</form>
+<hr>
 <?php endforeach; ?>
 
-<br>
-<button type="submit">Submit Vote</button>
-</form>
+</body>
+</html>

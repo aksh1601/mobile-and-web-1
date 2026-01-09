@@ -1,91 +1,88 @@
 <?php
+session_start();
 require '../config/db.php';
 
-$refs = $pdo->query("SELECT * FROM referendum")->fetchAll(PDO::FETCH_ASSOC);
-?>
+if(!isset($_SESSION['admin'])){
+    header("Location: login.php");
+    exit;
+}
 
+// Fetch all referendums
+$refs = $conn->query("SELECT * FROM referendum");
+?>
 <!DOCTYPE html>
 <html>
 <head>
-<title>Referendum Results</title>
+<title>Voting Results</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
-    font-family: Arial, sans-serif;
-    text-align:center;
+    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    font-family:Segoe UI;color:white;margin:0;padding:40px;
 }
-.chart-box{
-    width:400px;
-    margin:50px auto;
+.box{
+    max-width:900px;margin:auto;
+    background:rgba(255,255,255,0.08);
+    border-radius:20px;padding:30px;
 }
-.vote-counts{
-    font-size:18px;
-    margin-top:10px;
-}
+canvas{max-width:500px;margin:20px auto;display:block;}
+a{color:#7dd3fc;text-decoration:none;}
 </style>
 </head>
-
 <body>
 
-<h1>Referendum Results</h1>
+<div class="box">
+<h2>📊 Voting Results</h2>
+<a href="dashboard.php">⬅ Back to Dashboard</a>
+<hr>
 
-<?php foreach ($refs as $r): ?>
+<?php while($ref = $refs->fetch_assoc()): ?>
+
+<h3><?= $ref['text'] ?></h3>
 
 <?php
-$stmt = $pdo->prepare("
-SELECT o.option_text, COUNT(v.voted_option_id) AS votes
+$data = [];
+$labels = [];
+
+$stmt = $conn->prepare("
+SELECT o.option_text, COUNT(v.option_id) AS total 
 FROM referendum_options o
-LEFT JOIN voter_history v 
-  ON o.opt_id = v.voted_option_id 
- AND o.referendum_id = v.referendum_id
-WHERE o.referendum_id = ?
+LEFT JOIN voter_history v ON o.opt_id = v.option_id
+WHERE o.referendum_id=?
 GROUP BY o.opt_id
 ");
-$stmt->execute([$r['referendum_id']]);
+$stmt->bind_param("i", $ref['referendum_id']);
+$stmt->execute();
+$res = $stmt->get_result();
 
-$labels = [];
-$votes  = [];
-
-while($row = $stmt->fetch(PDO::FETCH_ASSOC)){
+while($row = $res->fetch_assoc()){
     $labels[] = $row['option_text'];
-    $votes[]  = $row['votes'];
+    $data[] = $row['total'];
 }
+
+$chartId = "chart".$ref['referendum_id'];
 ?>
 
-<div class="chart-box">
-    <h2><?= htmlspecialchars($r['text']) ?> (<?= $r['status'] ?>)</h2>
-
-    <canvas id="chart<?= $r['referendum_id'] ?>"></canvas>
-
-    <!-- TEXT COUNTS -->
-    <div class="vote-counts">
-        <?php for($i=0;$i<count($labels);$i++): ?>
-            <?= htmlspecialchars($labels[$i]) ?> : <?= $votes[$i] ?> votes<br>
-        <?php endfor; ?>
-    </div>
-</div>
+<canvas id="<?= $chartId ?>"></canvas>
 
 <script>
-new Chart(document.getElementById("chart<?= $r['referendum_id'] ?>"), {
+new Chart(document.getElementById('<?= $chartId ?>'), {
     type: 'pie',
     data: {
         labels: <?= json_encode($labels) ?>,
         datasets: [{
-            data: <?= json_encode($votes) ?>,
-            backgroundColor: ['#3498db','#e74c3c','#2ecc71','#f1c40f']
+            data: <?= json_encode($data) ?>,
+            backgroundColor: ['#38bdf8','#22c55e','#f97316','#ef4444','#a855f7']
         }]
-    },
-    options:{
-        responsive:true,
-        plugins:{
-            legend:{ position:'top' }
-        }
     }
 });
 </script>
 
-<?php endforeach; ?>
+<hr>
 
+<?php endwhile; ?>
+
+</div>
 </body>
 </html>
