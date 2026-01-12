@@ -1,12 +1,7 @@
 <?php
-$host = "localhost";
-$dbname = "mslr";   // your database name
-$user = "root";
-$pass = "";
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("Database Connection Failed: " . $e->getMessage());
+$conn = new mysqli("localhost", "root", "", "mslr_db");
+if ($conn->connect_error) {
+    die("DB Error");
 }
+session_start();
+?>
